@@ -5,7 +5,6 @@ uniform float centerX;
 uniform float centerY;
 uniform float isColor;
 
-
 float map(float xy, float a, float b, float c, float d)
 {
     return (xy - a) * ((d-c) / (b-a)) + c;
@@ -39,8 +38,8 @@ void main()
         float real = scaled_x * scaled_x - scaled_y * scaled_y;
         float img = 2.0 * scaled_x * scaled_y;
 
-        scaled_x = real + c_x;
-        scaled_y = img + c_y;
+        scaled_x = real + centerX;
+        scaled_y = img + centerY;
         n++;
     }
 
@@ -49,7 +48,7 @@ void main()
 
     if(isColor == 1.0)
     {
-        col += 0.5 + 0.5*cos( 3.0 + n*0.15 + vec3(0.0,0.6,1.0));
+        col += 0.5 + cos( 3.0 + n*0.15 + vec3(0.0,0.6,1.0));
         gl_FragColor = vec4(col, 1.0);
     }
     else

@@ -7,14 +7,12 @@ using namespace sf;
 //--------------------------------------------------------------------------------------------------
 class Frame
 {
-    //Constants for Frame
-    public:
-        static const uint width = 900;
-        static const uint height = 900;
-
     //Members
     private:
         RenderWindow *window;
+        uint fps;
+        uint width;
+        uint height;
         Event event;
         float zoom = 0.0f;
         float centerX = 0.0f;
@@ -24,9 +22,13 @@ class Frame
         bool isDrag = false;
         float mandelBrotWidth;
         float mandelBrotHeight;
+        bool isMandelBrot = true;
+        float isColor = 0.0;
+        Image currentFractal;
+
     public:
         //Constructor | Destructor
-        Frame();
+        Frame(uint width, uint height, uint fps);
         ~Frame();
 
     //Methods

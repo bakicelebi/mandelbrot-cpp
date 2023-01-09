@@ -3,10 +3,12 @@
 #include <iostream>
 #include <cmath>
 //--------------------------------------------------------------------------------------------------
-Frame::Frame()
+Frame::Frame(uint width, uint height, uint fps)
 {
     this->window = new RenderWindow(VideoMode(width, height), "Mandelbrot");
-    this->window->setFramerateLimit(60);
+    this->width = width;
+    this->height = height;
+    this->window->setFramerateLimit(fps);
     this->mandelBrotWidth = std::pow(2, 2 - zoom);
     this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
 }
@@ -49,22 +51,20 @@ void Frame::startLoop()
                 centerX -= getMouseDeltaX();
                 centerY += getMouseDeltaY();
                 oldMousePosition = newMousePosition;
-                 std::cout << centerX << " " << centerY << std::endl;
                 break;
             case Event::MouseWheelScrolled:
                 if (event.mouseWheelScroll.delta <= -1)
                 {
                     this->zoom -= 0.025;
                     this->mandelBrotWidth = std::pow(2, 2 - zoom);
-                    this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
+                    this->mandelBrotHeight = (this->height/ this->width) * this->mandelBrotWidth;
                 }
                 else if (event.mouseWheelScroll.delta >= 1)
                 {
                     this->zoom += 0.025;
                     this->mandelBrotWidth = std::pow(2, 2 - zoom);
-                    this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
+                    this->mandelBrotHeight = (this->height / this->width) * this->mandelBrotWidth;
                 }
-                std::cout << zoom << std::endl;
                 break;
             case Event::KeyPressed:
                 switch (this->event.key.code)
@@ -72,37 +72,63 @@ void Frame::startLoop()
                 case Keyboard::Add:
                     this->zoom += 0.025;
                     this->mandelBrotWidth = std::pow(2, 2 - zoom);
-                    this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
+                    this->mandelBrotHeight = (this->height / this->width) * this->mandelBrotWidth;
                     break;
                 case Keyboard::Subtract:
                     this->zoom -= 0.025;
                     this->mandelBrotWidth = std::pow(2, 2 - zoom);
-                    this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
+                    this->mandelBrotHeight = (this->height / this->width) * this->mandelBrotWidth;
                     break;
+                case Keyboard::M:
+                    this->isMandelBrot = true;
+                    break;
+                case Keyboard::J:
+                    this->isMandelBrot = false;
+                    break;
+                case Keyboard::C:
+                    if(this->isColor == 1.0)
+                    {
+                        this->isColor = 0.0;
+                    }
+                    else
+                    {
+                        this->isColor = 1.0;
+                    }
+                    break;
+                case Keyboard::S:
+                    currentFractal = this->window->capture();
+                    currentFractal.saveToFile("../fractal.png");
                 default:
                     break;
                 }
                 break;
             default:
-                //std::cout << this->event.type << std::endl;
                 break;
             }
         }
 
-        
         Shader shader;
         
-        auto shape = sf::RectangleShape{ sf::Vector2f{ this->window->getSize() } };
+        if(isMandelBrot)
+        {
+            shader.loadFromFile("../mandelbrot.frag", Shader::Fragment);
 
-        shader.loadFromFile("../mandelbrot.frag", Shader::Fragment);
+        }
+        else
+        {
+            shader.loadFromFile("../julia.frag", Shader::Fragment);
+        }
+        auto fractal = sf::RectangleShape{ Vector2f{(float)this->width, (float)this->height} };
 
-        shader.setUniform("res", Vector2f{width, height});
+
+        shader.setUniform("res", Vector2f{(float)this->width, (float)this->height});
         shader.setUniform("zoom", this->zoom);
         shader.setUniform("centerX", this->centerX);
         shader.setUniform("centerY", this->centerY);
+        shader.setUniform("isColor", this->isColor);
 
         this->window->clear();
-        this->window->draw(shape, &shader);
+        this->window->draw(fractal, &shader);
         this->window->display();
     }
 }
@@ -132,7 +158,6 @@ float Frame::getMouseDeltaY()
     float centerYN = -(this->mandelBrotHeight / 2) + this->centerY;
     float oldY = map(oldMousePosition.y, 0, this->window->getSize().y, centerYN, centerY);
     float newY = map(newMousePosition.y, 0, this->window->getSize().y, centerYN, centerY);
-    std::cout << newY << " - " << oldY << std::endl;
 
     return newY - oldY;
 }
