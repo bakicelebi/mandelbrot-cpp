@@ -9,14 +9,27 @@ Frame::Frame(uint width, uint height, uint fps)
     this->width = width;
     this->height = height;
     this->window->setFramerateLimit(fps);
+    
     this->mandelBrotWidth = std::pow(2, 2 - zoom);
     this->mandelBrotHeight = (height / width) * this->mandelBrotWidth;
+    
+    this->mandelbrotShader = new Shader();
+    this->juliaShader = new Shader();
+
+    this->mandelbrotShader->loadFromFile("../mandelbrot.frag", Shader::Fragment);
+    this->juliaShader->loadFromFile("../julia.frag", Shader::Fragment);
 }
 //--------------------------------------------------------------------------------------------------
 Frame::~Frame()
 {
+    std::cout << "Closed" << std::endl;
+    delete this->juliaShader;
+    delete this->mandelbrotShader;
     delete this->window;
+    this->juliaShader = nullptr;
+    this->mandelbrotShader= nullptr;
     this->window = nullptr;
+    
 
 }
 //--------------------------------------------------------------------------------------------------
@@ -96,8 +109,7 @@ void Frame::startLoop()
                     }
                     break;
                 case Keyboard::S:
-                    currentFractal = this->window->capture();
-                    currentFractal.saveToFile("../fractal.png");
+                    Frame::saveWindowContentToFile(window, createFileNameWithTimeStamp());
                 default:
                     break;
                 }
@@ -107,29 +119,11 @@ void Frame::startLoop()
             }
         }
 
-        Shader shader;
-        
-        if(isMandelBrot)
-        {
-            shader.loadFromFile("../mandelbrot.frag", Shader::Fragment);
+        Shader *shader = isMandelBrot ? this->mandelbrotShader : this->juliaShader;
 
-        }
-        else
-        {
-            shader.loadFromFile("../julia.frag", Shader::Fragment);
-        }
-        auto fractal = sf::RectangleShape{ Vector2f{(float)this->width, (float)this->height} };
+        this->initializeShaderUniforms(shader);
 
-
-        shader.setUniform("res", Vector2f{(float)this->width, (float)this->height});
-        shader.setUniform("zoom", this->zoom);
-        shader.setUniform("centerX", this->centerX);
-        shader.setUniform("centerY", this->centerY);
-        shader.setUniform("isColor", this->isColor);
-
-        this->window->clear();
-        this->window->draw(fractal, &shader);
-        this->window->display();
+        this->update(shader);
     }
 }
 //--------------------------------------------------------------------------------------------------
@@ -149,6 +143,7 @@ float Frame::getMouseDeltaX()
     float centerXN = -(this->mandelBrotWidth / 2) + this->centerX;
     float oldX = map(oldMousePosition.x, 0, this->window->getSize().x, centerXN, centerX);
     float newX = map(newMousePosition.x, 0, this->window->getSize().x, centerXN, centerX);
+    
     return newX - oldX;
 }
 //--------------------------------------------------------------------------------------------------
@@ -162,3 +157,54 @@ float Frame::getMouseDeltaY()
     return newY - oldY;
 }
 //--------------------------------------------------------------------------------------------------
+void Frame::update(Shader *shader)
+{
+    auto size = RectangleShape{ Vector2f{(float)this->width, (float)this->height} };
+    this->window->clear();
+    this->window->draw(size, shader);
+    this->window->display();
+}
+
+void Frame::initializeShaderUniforms(Shader *shader)
+{
+    shader->setUniform("res", Vector2f{(float)this->width, (float)this->height});
+    shader->setUniform("zoom", this->zoom);
+    shader->setUniform("centerX", this->centerX);
+    shader->setUniform("centerY", this->centerY);
+    shader->setUniform("isColor", this->isColor);
+}
+//--------------------------------------------------------------------------------------------------
+void Frame::saveWindowContentToFile(RenderWindow *window, std::string fileName)
+{
+    Texture texture;
+    texture.create(window->getSize().x, window->getSize().y);
+    texture.update(*window);
+
+    if(texture.copyToImage().saveToFile(fileName))
+    {
+        std::cout << "Current window contents saved to file " << fileName << std::endl;
+    }
+    else
+    {
+        std::cout << "Failed to save window content to file: " + fileName << std::endl;
+    }
+}
+//--------------------------------------------------------------------------------------------------
+std::string Frame::createFileNameWithTimeStamp()
+{
+    std::string filePrefix;
+
+    if(this->isMandelBrot)
+    {
+        filePrefix = "mandelbrot";
+    }
+    else
+    {
+        filePrefix = "julia";
+    }
+
+    std::time_t ct = std::time(0);
+    char* cc = ctime(&ct);
+
+    return filePrefix + " - " + cc + ".png";
+}
